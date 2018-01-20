@@ -1,9 +1,37 @@
+void noise();
+void noNoise();
+const int sound1 = 1;
+bool volS1;
+int temp;
 void setup() {
-  Bean.enableConfigSave(false);
-  Bean.setBeaconParameters(0xDEAD, 0xBEEF, 0xCAFE);
-  Bean.setBeaconEnable(true);
+  // put your setup code here, to run once:
+  Serial.begin(9600);
+  pinMode(sound1, INPUT);
+  Serial.println("This program test's the digital input values of the Sound Sensors");
 }
 
 void loop() {
-  Bean.sleep(0xFFFFFFFF);
+  volS1 = digitalRead(sound1);                                    //get if room is noisy. 0 if noise, 1 of no noise
+  temp = Bean.getTemperature();                                   //get temperature from on board temp sensor
+  !volS1 ? noise() : noNoise();
+}
+void noise(){
+    Bean.setScratchNumber(1, volS1);
+    Bean.setScratchNumber(2, temp);
+    Bean.setLed(100,0,0);
+    Serial.print("\nThe room is noisy professor Santacruz.\n");
+    Serial.print("The room temperature is :");
+    Serial.print(temp);
+    Serial.print(" degrees C");
+    Bean.sleep(1000);
+}
+void noNoise(){
+    Bean.setScratchNumber(1, volS1);
+    Bean.setScratchNumber(2, temp);
+    Bean.setLed(0,0,100);
+    Serial.print("\nThe room is quite.\n");
+    Serial.print("The room temperature is :");
+    Serial.print(temp);
+    Serial.print(" degrees C");
+    Bean.sleep(1000);
 }
