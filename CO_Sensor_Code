@@ -1,0 +1,13 @@
+const int VoltMeterPin = 0;
+const int PWMPin = 3;
+void setup() {
+  pinMode(PWMPin, OUTPUT);
+  Serial.begin(9600);
+  // put your setup code here, to run once:
+
+}
+void loop() {
+  // put your main code here, to run repeatedly:
+  analogWrite(PWMPin, 70);
+  Serial.println(analogRead(VoltMeterPin));
+}
