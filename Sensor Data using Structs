@@ -1,0 +1,69 @@
+const int noiseSensor = 0;                                          //noise sensor is connected to digital pin 0
+const int motionSensor = 1;                                         //motion sensor is connected to digital pin 1
+const int CO_sensor = 0;
+//There is no specific pin for the temperature sensor on the Bean+ device
+
+void setup() {
+  pinMode(noiseSensor, INPUT); 
+  pinMode(motionSensor, INPUT);
+  pinMode(CO_sensor, INPUT)
+  //No pinMode set up required for the temperature sensor
+  Serial.begin(9600);
+}
+/* Write function prototypes here   */
+sensorStuct getSensorData(sensorStruct);
+double getAveNoise(sensorStruct);
+double getAveMotion(sensorStruct);
+double getAveCO(sensorStruct);
+double getAveTemp(sensorStruct);
+
+/* Create data strucutres -- pass by value if memory does not become a large problem*/
+
+struct sensorStruct{
+    char rawNoiseSensorData;                                        // raw noise data
+    char rawMotionSensorData;                                       // raw sensor data
+    char rawCOsensorData;                                           // raw CO sensor data
+    char rawTempData;                                               // raw temp data
+};
+
+void loop() {
+  sensorStruct rawData[100];
+  double  averageNoise = 0.0,
+          averageMotion = 0.0,
+          averageCO = 0.0,
+          averageTemp= 0.0;
+  
+/* Need an external timer of 150 seconds that triggers when to start collecting data */
+//  Insert Timer Code here
+//
+//
+//
+/* After 150 seconds has gone by, begin taking sample measurements */
+  while (timer0 > 150 && timer0 <= 160){                            //this timer let's allows the CO sensor to be heated for 60 seconds and cooled for 90 second
+    for (int sampleIndex = 0; sampleIndex < 100; sampleIndex++){    //the samples are taken during the last 10 seconds of the cooling period of the CO sensor
+      rawData[sampleIndex] = getSensorData();  
+    }
+  }
+/* Now we take the average of all the samples that were taken */
+  averageNoise = getAveNoise(rawData);
+  averageMotion = getAveMotion(rawData);
+  averageCO = getAveCO(rawData);
+  averageTemp = getAveTemp(rawData);
+}
+
+/*----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- */
+/*----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- */
+/*----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- */
+/*----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- */
+/*----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- */
+/*----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- */
+/*----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- */
+sensorStruct getSensorData(){
+  sensorStruct temp;                                                //create a temporary 'sensorStruct' type to store raw data while running this function. after data is collected, the structure is passed back
+  temp.rawNoiseSensorData = digitalRead(noiseSensor);
+  temp.rawMotionSensorData = digitalRead(motionSensor);
+  temp.rawCOsensorData = analogRead(CO_sensor);
+  temp.rawTempData =                                                 /* Need to get temperature from the bean controller!! */
+
+  return temp;                                                      //return the structure back to main <- which contains 1 of 100 sample set of data
+}
