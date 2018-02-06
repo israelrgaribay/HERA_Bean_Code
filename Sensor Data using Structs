@@ -1,6 +1,15 @@
 /*
-  Author: Israel Garibay
-  Version: 1.2
+  Fall 2018 -- EE 198B -- Senior Project
+  Last Edit by: Israel Garibay
+  
+  Edit Notes: Organization of code
+
+  Needs of Code: + Timer code
+                 + Finish writing sliding window algorith <- possibly use a function instead of done in main() for ease of complexity
+                 + Bean+ code is not integrated
+                 + Need to review code for forming BLE connections between Bean+ && Android Phones (write on another sketch and then integrate here when done)
+                 + Need 1.4 volt generation and CO sensor code 
+
 
 */
 const int noiseSensor = 0;                                          //noise sensor is connected to digital pin 0
@@ -32,13 +41,17 @@ void setup() {
 
 void loop() {
   sensorStruct rawData[10];                                         // create an Abstact Data Type for storing the sensor information, specifically 100 of these ADT
+  
   float averageNoise = 0.0;                                         // set the average noise value back to zero
   float averageMotion = 0.0;                                        // set the average motion value back to zero
   float averageCO = 0.0;                                            // set the average CO values back to zero
   float averageTemp= 0.0;                                           // set the average temperature values back to zero
+  
   bool noiseLevel = false;
   bool motionLevel = false;
-  char slidingWindow[2][3];                                         // 2 rows, and 3 column array this is what will be used for the sliding window algorithm
+  
+  bool slidingWindow[2][3] = {{0,0,0},
+                              {0,0,0}};                             // 2 rows, and 3 column array this is what will be used for the sliding window algorithm
   int timer = 0;
 /* Need an external timer of 150 seconds that triggers when to start collecting data */
 /* After 150 seconds has gone by, begin taking sample measurements */
