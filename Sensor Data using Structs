@@ -41,7 +41,7 @@ void setup() {
 }
 
 void loop() {
-  sensorStruct rawData[10];                                         // create an Abstact Data Type for storing the sensor information, specifically 100 of these ADT
+  sensorStruct rawData[100];                                        // create an Abstact Data Type for storing the sensor information, specifically 100 of these ADT
   
   float averageNoise = 0.0;                                         // set the average noise value back to zero
   float averageMotion = 0.0;                                        // set the average motion value back to zero
