@@ -1,21 +1,25 @@
 /*
   Fall 2018 -- EE 198B -- Senior Project
-  Last Edit by: Israel Garibay
-  Date of Edit: February 5th, 2018 8:05PM
-  
-  Edit Notes: Organization of code
+================================================================================================================================================================================================
+Engineer:             Date:               Update Description:
+================================================================================================================================================================================================
+Israel Garibay        March 6th, 2018     -> Added code to write to Bean scratch memory
+                                          -> Using white LED to know when program is running
+================================================================================================================================================================================================
 
-  Needs of Code: + Timer code
-                 + Finish writing sliding window algorith <- possibly use a function instead of done in main() for ease of complexity
-                 + Bean+ code is not integrated
-                 + Need to review code for forming BLE connections between Bean+ && Android Phones (write on another sketch and then integrate here when done)
-                 + Need 1.4 volt generation and CO sensor code 
+Needs of Code:
++ Timer code
++ Finish writing sliding window algorith <- possibly use a function instead of done in main() for ease of complexity
++ Bean+ code is not integrated
++ Need to review code for forming BLE connections between Bean+ && Android Phones (write on another sketch and then integrate here when done)
+SCRATCH THIS FOR NOW + Need 1.4 volt generation and CO sensor code 
 
 
 */
-const int noiseSensor = 0;                                          //noise sensor is connected to digital pin 0
-const int motionSensor = 1;                                         //motion sensor is connected to digital pin 1
-const int CO_sensor = 0;                                            //CO sensor is connected to analog pin 0
+int timer = 0;                                                      // timer for internal clock
+const int noiseSensor = 0;                                          // noise sensor is connected to digital pin 0
+const int motionSensor = 1;                                         // motion sensor is connected to digital pin 1
+const int CO_sensor = 0;                                            // CO sensor is connected to analog pin 0
 
 struct sensorStruct{                                                // Create data strucutres -- pass by value if memory does not become a large problem
     float rawNoiseSensorData;                                       // raw noise data
@@ -31,17 +35,25 @@ float getAveMotion(sensorStruct []);                                // function 
 float getAveCO(sensorStruct []);                                    // function prototype that returns the average CO values recorded in the 10 second time frame
 float getAveTemp(sensorStruct []);                                  // function prototype that returns the average temperature of the dataset
 
+bool slidingWindow(float, float, float);                                  
+
+void setScratchData(float, float, float, float);
 
 void setup() {
   pinMode(noiseSensor, INPUT);                                      // set the noise sensor pin as an input
   pinMode(motionSensor, INPUT);                                     // set the motion sensor pint as an input
   pinMode(CO_sensor, INPUT);                                        // set the CO analog pin as an input
   //No pinMode set up required for the temperature sensor           // there is no pin for the temperature sensor on the Bean+ device
-  Serial.begin(9600);                                               // pushing to serial for debugging
+  //Serial.begin(9600);                                               // pushing to serial for debugging
+  String BeanName = "HERA Start";
+  Bean.setBeanName(BeanName);
+  Bean.setLed(50,50,50);
 }
 
 void loop() {
-  sensorStruct rawData[100];                                        // create an Abstact Data Type for storing the sensor information, specifically 100 of these ADT
+  String BeanName = "HERA Start";
+  Bean.setBeanName(BeanName);
+  sensorStruct rawData[10];                                        // create an Abstact Data Type for storing the sensor information, specifically 100 of these ADT
   
   float averageNoise = 0.0;                                         // set the average noise value back to zero
   float averageMotion = 0.0;                                        // set the average motion value back to zero
@@ -51,22 +63,26 @@ void loop() {
   bool noiseLevel = false;
   bool motionLevel = false;
   
-  bool slidingWindow[2][3] = {{0,0,0},
-                              {0,0,0}};                             // 2 rows, and 3 column array this is what will be used for the sliding window algorithm
-  int timer = 0;
+  timer = (millis() % (161 * 1000)) / 1000;                                           // the timer variable should only exist between 0 and 160 seconds
+  //bool slidingWindow[2][3] = {{0,0,0},
+  //                            {0,0,0}};                             // 2 rows, and 3 column array this is what will be used for the sliding window algorithm
 /* Need an external timer of 150 seconds that triggers when to start collecting data */
 /* After 150 seconds has gone by, begin taking sample measurements */
-  while (timer > 150 && timer <= 160){                              // this timer let's allows the CO sensor to be heated for 60 seconds and cooled for 90 second
-    for (int sampleIndex = 0; sampleIndex < 100; sampleIndex++){    // the samples are taken during the last 10 seconds of the cooling period of the CO sensor
+  while (timer >= 15 && timer <= 20){                              // this timer let's allows the CO sensor to be heated for 60 seconds and cooled for 90 second
+    Bean.setLed(50,0,0);                                            // set LED to be red when sampling data for 10 seconds
+    for (int sampleIndex = 0; sampleIndex < 10; sampleIndex++){    // the samples are taken during the last 10 seconds of the cooling period of the CO sensor
       rawData[sampleIndex] = getSensorData();                       // get raw sample measurements and store in the rawData[] structure index
     }
   }
+  Bean.setLed(50,50,50);                                            // reset LED to be white when done sampling data
 /* Now we take the average of all the samples that were taken */
   averageNoise = getAveNoise(rawData);                              // get the average noise of the sample rawData[] structure
   averageMotion = getAveMotion(rawData);                            // get the average motion of the sample rawData[] structure
   averageCO = getAveCO(rawData);                                    // get the average CO values from the rawData[] strucutre
   averageTemp = getAveTemp(rawData);                                // get the average temperature values from the rawData[] structure
 
+  setScratchData(averageNoise, averageMotion, averageCO, averageTemp);
+  
   if (averageNoise >= 0.50){
     noiseLevel = true;
   }
@@ -95,11 +111,13 @@ void loop() {
 /*----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- */
 /*----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- */
 sensorStruct getSensorData(){
+  //int tempInt = 0;
   sensorStruct temp;                                                // create a temporary 'sensorStruct' type to store raw data while running this function. after data is collected, the structure is passed back
   temp.rawNoiseSensorData = digitalRead(noiseSensor);               // take a sample of the noise measurement
   temp.rawMotionSensorData = digitalRead(motionSensor);             // take a sample of the motion sensor
   temp.rawCOsensorData = analogRead(CO_sensor);                     // take a sample of the CO measurements
-  //temp.rawTempData =                                              // take a sample of the temperature values -- Bean+ specific
+  //tempInt = Bean.getTemperature
+  temp.rawTempData = Bean.getTemperature();                            // take a sample of the temperature values -- Bean+ specific
 
   return temp;                                                      // return the structure back to main <- which contains 1 of 100 sample set of data
 }
@@ -138,4 +156,12 @@ float getAveTemp(sensorStruct temp[]){
     sumTotal += temp[index].rawTempData;
   }
   return sumTotal / 100;                                            // return the average of the temperature data measurements
+}
+/*----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- */
+/*----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- */
+void setScratchData(float aNoise, float aMotion, float aCO, float aTemp){
+  Bean.setScratchNumber(1, aNoise);
+  Bean.setScratchNumber(2, aMotion);
+  Bean.setScratchNumber(3, aCO);
+  Bean.setScratchNumber(4, aTemp);
 }
