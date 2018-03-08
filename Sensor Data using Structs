@@ -8,10 +8,15 @@ Israel Garibay        March 6th, 2018     -> Added code to write to Bean scratch
 Israel Garibay        March 8th, 2018     -> Worked on timer code
                                           -> Added more documentation 
                                           -> Using Arduion millis() function as an external clock for the controller
+                                          -> Measured samping statistics: In 10 seconds 110 samples can be taken
+                                          -> Program needs reliable sampling clock functionality
+                                                
+                                          
+                                                                                  
 ================================================================================================================================================================================================
 
 Needs of Code:
-+ Timer code
++ Timer code 
 + Finish writing sliding window algorith <- possibly use a function instead of done in main() for ease of complexity
 + Bean+ code is not integrated
 + Need to review code for forming BLE connections between Bean+ && Android Phones (write on another sketch and then integrate here when done)
@@ -25,7 +30,7 @@ const int noiseSensor = 0;                                          // noise sen
 const int motionSensor = 1;                                         // motion sensor is connected to digital pin 1
 const int CO_sensor = 0;                                            // CO sensor is connected to analog pin 0
 
-#define SAMPLE_NUM 10
+#define SAMPLE_NUM 110
 
 //=================================================ABSTRACT DATA TYPES===============================================================================================
 
@@ -49,7 +54,7 @@ bool slidingWindow(float, float, float);
 
 void setScratchData(float, float, float, float);                    // function prototype that writes the scratch memory characteristics of the Bean+ device
 
-//==================================================BEGIN HERA START NODE CODE========================================================================================
+//=================================================BEGIN HERA START NODE CODE========================================================================================
 
 void setup() {
   pinMode(noiseSensor, INPUT);                                      // set the noise sensor pin as an input
@@ -58,10 +63,12 @@ void setup() {
   //No pinMode set up required for the temperature sensor           // there is no pin for the temperature sensor on the Bean+ device
   Serial.begin(9600);                                               // pushing to serial for debugging
   String BeanName = "HERA Start";
+  Bean.enableConfigSave(false);
   Bean.setBeanName(BeanName);
 }
 
 void loop() {
+  int counter = 0;
   String BeanName = "HERA Start";
   Bean.setBeanName(BeanName);
   sensorStruct rawData[10];                                        // create an Abstact Data Type for storing the sensor information, specifically 10 of these ADT
@@ -75,17 +82,25 @@ void loop() {
   bool motionLevel = false;
   bool updateScratch = false;
 
+  int samplingPeriod = 0;
+
   Bean.setLed(0,50,0);                                              // green light to indicate that the clock is heating up the CO sensor
   
   //timer = (millis() % (161 * 1000)) / 1000;                       // the timer variable should only exist between 0 and 160 seconds
   //bool slidingWindow[2][3] = {{0,0,0},
   //                            {0,0,0}};                           // 2 rows, and 3 column array this is what will be used for the sliding window algorithm
-
 /* After 150 seconds has gone by, begin taking sample measurements */
   while ((((millis() % (161 * 1000)) / 1000) >= 15) && (((millis() % (161 * 1000)) / 1000) < 30)){                            // this timer let's allows the CO sensor to be heated for 60 seconds and cooled for 90 second
     Bean.setLed(50,0,0);                                            // set LED to be red when sampling data for 10 seconds
     for (int sampleIndex = 0; sampleIndex < SAMPLE_NUM; sampleIndex++){     // the samples are taken during the last 10 seconds of the cooling period of the CO sensor
+      samplingPeriod = millis();
       rawData[sampleIndex] = getSensorData();                       // get raw sample measurements and store in the rawData[] structure index
+      samplingPeriod = (millis() - samplingPeriod);                 // take the difference to measure sampling period of sensors
+      counter++;
+      Serial.print("Sampling Period:  ");                               // print the sample period of how long it takes the sensors to take one set of sample measurements
+      Serial.println(samplingPeriod);
+      Serial.print("Counter Position: ");
+      Serial.println(counter);
     }
     updateScratch = true;                                           // only update scratch memory elements if this after new samples are measured
   }
@@ -185,6 +200,6 @@ float getAveTemp(sensorStruct temp[]){
 void setScratchData(float avNoise, float avMotion, float avCO, float avTemp){
   Bean.setScratchNumber(1, avNoise);
   Bean.setScratchNumber(2, avMotion);
-  Bean.setScratchNumber(3, (uint8_t)avCO);
-  Bean.setScratchNumber(4, (uint8_t)avTemp);
+  Bean.setScratchNumber(3, avCO);
+  Bean.setScratchNumber(4, avTemp);
 }
