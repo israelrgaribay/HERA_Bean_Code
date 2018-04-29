@@ -1,0 +1,425 @@
+/*  Engineer          Date & Time       Tasks Completed
+ *============================================================================================
+ *  Israel Garibay    4/27/18           Rewriting all code from Scratch      
+ *                                      Including More Documentation
+ * 
+ * 
+ * 
+ * 
+ */
+/*===================================================================================================== 
+ * The Following Libraries are need for the peripherals that are used for this program
+ * SPI.h                -> Needed for communicating with SD card
+ * SD.h                 -> SD card library functions for creating, reading, and writing data
+ * Wire.h               -> Arduino I2C library for communicating with RTC module and LCD screen
+ * LiquidCrystal_I2C.h  -> library for communicating with I2C LCD
+=====================================================================================================*/
+/*=============================PROGRAM LIBRARIES=====================================================*/
+
+#include <SPI.h>
+#include <SD.h>
+#include <Wire.h>
+//#include <LiquidCrystal_I2C.h>
+#include <String.h>
+
+/*=============================PROGRAM CONSTANTS=====================================================*/
+
+#define DS3231_I2C_ADDRESS 0x68
+#define dismountSD 0  // button for safely turning off controller
+#define SDpin 6       // Chip Select pin for SD card is digital pin 6
+
+
+/*=============================FUNCTION PROTOTYPES===================================================*/
+
+//void setBeanName(void);
+//void setUpLcdCode(void);
+void setUpRTC(void);
+void setUpSDcard(void);
+//void updateLCD(byte *, byte*);
+void checkConnectionState(void);
+void checkDismount(void);;
+void readDS3231time(byte*, byte*, byte*, byte*, byte*, byte*, byte* );
+void upDateFiles(void);
+byte decToBcd(byte);
+byte bcdToDec(byte);
+
+String SDprintTime(byte*, byte*, byte*, byte*, byte*, byte*, byte* );
+
+/*=============================GLOBAL PARAMETERS===================================================*/
+
+File HERAend;
+//LiquidCrystal_I2C lcd(0x27, 16, 2); // set the LCD address to 0x27 for 16 char and 2 line display
+
+/*=============================SETUP CODE===========================================================*/
+
+void setup() {
+  // put your setup code here, to run once:
+  setUpRTC();
+  setUpSDcard();
+  Bean.enableAdvertising(true);
+}
+
+void loop() {
+  checkConnectionState();
+  //Bean.sleep(1000);
+  // put your main code here, to run repeatedly:
+
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/*=====================================Functions Go Here!!!============================================*/
+/*===================================================================================================== 
+ * Function Name: setBeanName
+ *  Function Description:
+ *    Sets the Bean+ device to have the name "HERA Start"
+ *    Saves the name to NVM
+ *  Input Parameters
+ *    None
+ *  Output Parameters
+ *    None
+ *  Return
+ *    None
+=====================================================================================================*/
+
+//void setBeanName(void){
+//  Bean.enableConfigSave(true);
+//  String BeanName = "HERA End";
+//  Bean.setBeanName(BeanName);
+//}
+
+/*=================================================================== 
+ * Function Name: setUpLcdCode
+ *  Function Description:
+ *    Starts the LCD screen on Sensor Module
+ *  Input Parameters
+ *    None
+ *  Output Parameters
+ *    None
+ *  Return
+ *    None
+=====================================================================*/
+/*void setUpLcdCode(void){
+  ////lcd.begin();                    // start LCD module
+  ////lcd.backlight();                // turn on backlight on LCD module
+  ////lcd.print("HERA Start Node");   // print "HERA Start Node" on LCD display
+  delay(1500);                    // hold screen display for 1.5 seconds
+}*/
+
+/*=================================================================== 
+ * Function Name: setUpRTC
+ *  Function Description:
+ *    This function simply sets the Bean+ controller as a master device
+ *    on the I2C bus. 
+ *    Sets the I2C baud rate to 9600 bits per second
+ *  Input Parameters
+ *    None
+ *  Output Parameters
+ *    None
+ *  Return
+ *    None
+=====================================================================*/
+
+void setUpRTC(void){
+  Wire.begin();                     // Initiate the Wire library and join the I2C bus as a master
+  Serial.begin(9600);               // Set the I2C baud rate as 9600 bits per second
+}
+
+/*=================================================================== 
+ * Function Name: setUpSDcard
+ *  Function Description:
+ *    Prepares the SD card to be written to. Creates/Open HSTART.txt
+ *    file that will hold all log data
+ *  Input Parameters
+ *    lcd object
+ *    HERAend object
+ *  Output Parameters
+ *    lcd object
+ *    HERAend starting files
+ *  Return
+ *    None
+=====================================================================*/
+void setUpSDcard(void){
+  pinMode(SDpin, OUTPUT);               // slave select pin for sd card
+  pinMode(dismountSD, INPUT);           // button for dismounting the sd card
+  while(!Serial);                       // wait for serial port to connect
+  ////lcd.clear(); ////lcd.home();      // clear and reposition cursor on LCD screen
+  ////lcd.print("Starting SD Card");    // let user know the program is going to start preparing the SD card
+  SD.begin(SDpin);                      // initialize the SD library and the SD card. return 'true' if initialization worked and 'false' if failed
+  delay(1000);                          // wait 1 second
+  if (!SD.begin(SDpin)){                // try starting SD card again
+    ////lcd.clear(); ////lcd.home();            // clear LCD screen
+    ////lcd.print("SD Fail to Init");
+    ////lcd.setCursor(0,1);                 // set cursor to write on the left most char of the second row
+    ////lcd.print("Check SD Card");         // tell the user to check if SD card is there
+    delay(10);
+    while(1);                           // halt program and have the user restart the microcontroller
+  }
+  ////lcd.clear(); ////lcd.home();
+  ////lcd.print("SD Good 2 Go!");           // let user know the SD card was successfully initialized
+  delay(1000);                          // wait 1 second
+  HERAend = SD.open("Hend.txt", FILE_WRITE);
+  if (!HERAend){
+    ////lcd.clear(); ////lcd.home();
+    ////lcd.print("Prob with File");
+  }
+  HERAend.print("Raw Hera End Data");
+  HERAend.println();
+  HERAend.print("|End Time & Date   |Start Time & Date | Activity Level | Hops");
+  //            "1234567891123456789212345678931234567894123456789512345678961"
+  HERAend.println();
+  HERAend.close();                       // close file that was written to
+}
+
+/*=================================================================== 
+ * Function Name: checkConnectionState
+ *  Function Description:
+ *    Prepares the SD card to be written to. Creates/Open HSTART.txt
+ *    file that will hold all log data
+ *  Input Parameters
+ *    lcd object
+ *    HERAend object
+ *  Output Parameters
+ *    lcd object
+ *    HERAend starting files
+ *  Return
+ *    None
+=====================================================================*/
+void checkConnectionState(){
+  if (Bean.getConnectionState() == true) {
+    //lcd.clear(); //lcd.setCursor(0,0);       // set cursor to the top row and leftmost point
+    //lcd.print("BEAN CONNECTED");
+    while (Bean.getConnectionState() == true){
+      // hold program here until disconnection
+      Bean.setLed(20,20,150);
+      };
+    if (Bean.getConnectionState() == false){
+      //lcd.clear();
+      //lcd.setCursor(0,0);
+      //lcd.print("BEAN DETACHED");
+      Bean.setLed(10,10,50);
+      Bean.sleep(100);
+      Bean.setLed(0,0,0);
+      Bean.sleep(100);
+      Bean.setLed(10,10,50);
+      Bean.sleep(100);
+      Bean.setLed(0,0,0);
+      upDateFiles();                      // after the disconnection, update the sd card files
+      Bean.setLed(10,10,50);
+      Bean.sleep(100);
+      Bean.setLed(0,0,0);
+      Bean.sleep(100);
+      Bean.setLed(10,10,50);
+      Bean.sleep(100);
+      Bean.setLed(0,0,0);
+    }
+  }
+}
+
+/*=================================================================== 
+ * Function Name: checkDismount
+ *  Function Description:
+ *    Prepares the SD card to be written to. Creates/Open HSTART.txt
+ *    file that will hold all log data
+ *  Input Parameters
+ *    lcd object
+ *    HERAend object
+ *  Output Parameters
+ *    lcd object
+ *    HERAend starting files
+ *  Return
+ *    None
+=====================================================================*/
+void checkDismount(){
+  if (digitalRead(dismountSD) == 1){
+    HERAend.flush();
+    HERAend.close();
+    
+    //lcd.clear();
+    //lcd.home();
+    //lcd.print("SD Remove Safe!");
+    while(1){
+      Bean.setLed(50,50,0);
+      Bean.sleep(100);
+      Bean.setLed(0,0,0);
+    }
+  }
+}
+
+/*=================================================================== 
+ * Function Name: setUpSDcard
+ *  Function Description:
+ *    Prepares the SD card to be written to. Creates/Open HSTART.txt
+ *    file that will hold all log data
+ *  Input Parameters
+ *    lcd object
+ *    HERAend object
+ *  Output Parameters
+ *    lcd object
+ *    HERAend starting files
+ *  Return
+ *    None
+=====================================================================*/
+byte decToBcd(byte val)
+{
+  return( (val/10*16) + (val%10) );
+}
+
+/*=================================================================== 
+ * Function Name: setUpSDcard
+ *  Function Description:
+ *    Prepares the SD card to be written to. Creates/Open HSTART.txt
+ *    file that will hold all log data
+ *  Input Parameters
+ *    lcd object
+ *    HERAend object
+ *  Output Parameters
+ *    lcd object
+ *    HERAend starting files
+ *  Return
+ *    None
+=====================================================================*/
+byte bcdToDec(byte val)
+{
+  return( (val/16*10) + (val%16) );
+}
+
+/*=================================================================== 
+ * Function Name: setUpSDcard
+ *  Function Description:
+ *    Prepares the SD card to be written to. Creates/Open HSTART.txt
+ *    file that will hold all log data
+ *  Input Parameters
+ *    lcd object
+ *    HERAend object
+ *  Output Parameters
+ *    lcd object
+ *    HERAend starting files
+ *  Return
+ *    None
+=====================================================================*/
+void readDS3231time(byte *second, byte *minute, byte *hour, byte *dayOfWeek, byte *dayOfMonth, byte *month, byte *year){
+  Wire.beginTransmission(DS3231_I2C_ADDRESS);
+  Wire.write(0); // set DS3231 register pointer to 00h
+  Wire.endTransmission();
+  Wire.requestFrom(DS3231_I2C_ADDRESS, 7);
+  // request seven bytes of data from DS3231 starting from register 00h
+  *second = bcdToDec(Wire.read() & 0x7f);
+  *minute = bcdToDec(Wire.read());
+  *hour = bcdToDec(Wire.read() & 0x3f);
+  *dayOfWeek = bcdToDec(Wire.read());
+  *dayOfMonth = bcdToDec(Wire.read());
+  *month = bcdToDec(Wire.read());
+  *year = bcdToDec(Wire.read());
+}
+
+/*=================================================================== 
+ * Function Name: setUpSDcard
+ *  Function Description:
+ *    Prepares the SD card to be written to. Creates/Open HSTART.txt
+ *    file that will hold all log data
+ *  Input Parameters
+ *    lcd object
+ *    HERAdata object
+ *  Output Parameters
+ *    lcd object
+ *    HERAdata starting files
+ *  Return
+ *    None
+=====================================================================*/
+
+void upDateFiles(){
+  ScratchData   r1 = Bean.readScratchData(1),   // holds START node time
+                r2 = Bean.readScratchData(2),   // holds activity level
+                r3 = Bean.readScratchData(3);   // holds number of hops
+  byte second,
+       minute, 
+       hour, 
+       dayOfWeek, 
+       dayOfMonth, 
+       month, 
+       year;
+
+  String Sbuffer;
+  
+  readDS3231time(&second, &minute, &hour, &dayOfWeek, &dayOfMonth, &month, &year);  //update time
+  
+  HERAend = SD.open("Hend.txt", FILE_WRITE);        // open data to start storing data
+  
+  Sbuffer = SDprintTime(&second, &minute, &hour, &dayOfWeek, &dayOfMonth, &month, &year);
+  
+  HERAend.print(Sbuffer);                       // prints time as hh:mm:ss mm/dd/yyyy
+  HERAend.print("| ");
+
+  /* Print Start Node Time onto SD card, EXAMPLE "16:50:07 4/18/18"*/ 
+  for (int index = 0; index < 17; index++){
+    Sbuffer = String(r1.data[index]);
+    HERAend.print(Sbuffer);
+  }
+  /*Print the activity level on SD card*/
+  Sbuffer = String(r2.data[0], DEC);
+  HERAend.print(Sbuffer);      // print the activity level
+  HERAend.print(" | ");
+
+  /*Print the Number of Hops onto SD card*/
+  Sbuffer = String(r3.data[1], DEC) + String(r3.data[0]);
+  HERAend.print(Sbuffer);
+  HERAend.println();
+  HERAend.flush();
+  HERAend.close();
+  Bean.setLed(20,0,0);
+  Bean.sleep(100);
+}
+
+/*=================================================================== 
+ * Function Name: setUpSDcard
+ *  Function Description:
+ *    Prepares the SD card to be written to. Creates/Open HSTART.txt
+ *    file that will hold all log data
+ *  Input Parameters
+ *    lcd object
+ *    HERAend object
+ *  Output Parameters
+ *    lcd object
+ *    HERAend starting files
+ *  Return
+ *    None
+=====================================================================*/
+String SDprintTime(byte *second, byte *minute, byte *hour, byte *dayOfWeek, byte *dayOfMonth, byte *month, byte *year){
+  String Sbuffer = "";
+  if (*minute<10)
+  {
+    Sbuffer = "0";
+  }
+  Sbuffer = Sbuffer + String(*minute, DEC) + ":";
+  if (*second<10)
+  {
+    Sbuffer = Sbuffer + "0";
+  }
+  Sbuffer = Sbuffer + String(*second, DEC);
+  Sbuffer = Sbuffer + " " + String(*month, DEC) + "/";// " x | x | hh:mm:ss mm/ " 
+  if (*dayOfMonth < 10){
+    Sbuffer = Sbuffer + "0";
+  }
+  Sbuffer = Sbuffer + String(*dayOfMonth, DEC) + "/" + String(*year, DEC);// hh:mm:ss mm/dd/yyyy
+  return Sbuffer;
+}
