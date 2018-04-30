@@ -2,7 +2,8 @@
  *============================================================================================
  *  Israel Garibay    4/27/18           Rewriting all code from Scratch      
  *                                      Including More Documentation
- * 
+ *  Israel Garibay    4/30/18           Removed LCD functionality to save SRAM. Doing this allows
+ *                                      the SD card functions to work properly.
  * 
  * 
  * 
@@ -39,14 +40,16 @@ void setUpSensors(void);
 void setUpSDcard(void);
 void sampleSensors(byte *, byte *);
 void updateLCD(byte *, byte*);
-void checkConnectionState(byte);
+void checkConnectionState(byte*);
 void checkDismount(void);
 void slidingWindow(byte *);
 void readDS3231time(byte*, byte*, byte*, byte*, byte*, byte*, byte* );
-void upDateFiles(byte*, byte*, byte);
-void upDateScratch(byte);
+void upDateFiles(byte*, byte*, byte*);
+void upDateScratch(byte*);
 byte decToBcd(byte);
 byte bcdToDec(byte);
+
+String SDprintTime(byte*, byte*, byte*, byte*, byte*, byte*, byte*);
 
 /*=============================GLOBAL PARAMETERS===================================================*/
 
@@ -56,7 +59,7 @@ File HERAdata;
 /*=============================SETUP CODE===========================================================*/
 
 void setup() {
-  //setBeanName();
+  setBeanName();
   //setUpLcdCode();
   setUpRTC();
   setUpSensors();
@@ -72,7 +75,7 @@ void loop() {
   ////lcd.clear(); ////lcd.home();                  // reset LCD display
   byte motSampArr[9] = {0,0,0,0,0,0,0,0,0}; // initializde array to hold nothing but zero
   byte noiSampArr[9] = {0,0,0,0,0,0,0,0,0}; // initializde array to hold nothing but zero
-  byte activity = 0x11;
+  uint8_t activity[1] = {3};
   
   while(1){
     sampleSensors(motSampArr, noiSampArr);  // takes noise and motion samples and stores them in their respective array
@@ -121,7 +124,6 @@ void loop() {
  *  Return
  *    None
 =====================================================================================================*/
-
 //void setBeanName(void){
 //  Bean.enableConfigSave(true);
 //  String BeanName = "HERA Start";
@@ -222,7 +224,7 @@ void setUpSDcard(void){
   }
   HERAdata.print("Raw Hera Start Data");
   HERAdata.println();
-  HERAdata.print(" M | N | Time     Date    |");
+  HERAdata.print(F(" M | N | Time     Date     |"));
   HERAdata.println();
   HERAdata.close();                       // close file that was written to
 }
@@ -298,7 +300,7 @@ void updateLCD(byte motion[], byte noise[]){
  *  Return
  *    None
 =====================================================================*/
-void checkConnectionState(byte activity){
+void checkConnectionState(uint8_t activity[]){
   if (Bean.getConnectionState() == true) {
     //lcd.clear(); //lcd.setCursor(0,0);       // set cursor to the top row and leftmost point
     //lcd.print("BEAN CONNECTED");
@@ -449,7 +451,7 @@ void readDS3231time(byte *second, byte *minute, byte *hour, byte *dayOfWeek, byt
  *  Return
  *    None
 =====================================================================*/
-void upDateFiles(byte motion[], byte noise[], byte activity){
+void upDateFiles(byte motion[], byte noise[], uint8_t activity[]){
   byte second,
        minute, 
        hour, 
@@ -458,42 +460,14 @@ void upDateFiles(byte motion[], byte noise[], byte activity){
        month, 
        year;
   readDS3231time(&second, &minute, &hour, &dayOfWeek, &dayOfMonth, &month, &year);  //update time
-  String Sbuffer;
+  
+  String Sbuffer, timeStamp;
   HERAdata = SD.open("Hstart.txt", FILE_WRITE);        // open data to start storing data
   Sbuffer = " " + String(motion[0]) + " | " + String(noise[0]) + " | "; // " 0 | 0 | "
   HERAdata.print(Sbuffer);
-  Sbuffer = "";
-  if (hour<10)
-  {
-    Sbuffer = "0";
-  }
-  Sbuffer = Sbuffer + String(hour, DEC) + ":";
-  HERAdata.print(Sbuffer);            // " x | x | hh:"
-  Sbuffer = "";
-  if (minute<10)
-  {
-    Sbuffer = "0";
-  }
-  Sbuffer = Sbuffer + String(minute, DEC) + ":";
-  HERAdata.print(Sbuffer);            // " x | x | hh:mm:"
-  Sbuffer = "";
-  if (second<10)
-  {
-    Sbuffer = "0";
-  }
-  Sbuffer = Sbuffer + String(second, DEC);
-  HERAdata.print(Sbuffer);          // " x | x | hh:mm:ss"
-  Sbuffer = "";
-  delay(100);
-  Sbuffer = " " + String(month, DEC) + "/";// " x | x | hh:mm:ss mm/ " 
-  HERAdata.print(Sbuffer);     // " x | x | hh:mm:ss mm"
-  Sbuffer = "";
-  if (dayOfMonth < 10){
-    Sbuffer = "0";
-  }
-  Sbuffer = Sbuffer + String(dayOfMonth, DEC) + "/" + String(year, DEC);// hh:mm:ss mm/dd/yyyy
+  Sbuffer = SDprintTime(&second, &minute, &hour, &dayOfWeek, &dayOfMonth, &month, &year);
   HERAdata.print(Sbuffer);
-  Sbuffer = " | " + String(activity, DEC) ;
+  Sbuffer = " | " + String(activity[0]);
   HERAdata.print(Sbuffer);
   Sbuffer = "";
   HERAdata.println();
@@ -516,8 +490,67 @@ void upDateFiles(byte motion[], byte noise[], byte activity){
  *  Return
  *    None
 =====================================================================*/
-void upDateScratch(byte activity){
+void upDateScratch(uint8_t activity[]){
+  byte second,
+       minute, 
+       hour, 
+       dayOfWeek, 
+       dayOfMonth, 
+       month, 
+       year;
+
+  String Sbuffer;
+  
+  readDS3231time(&second, &minute, &hour, &dayOfWeek, &dayOfMonth, &month, &year);  //update time
+  
+  Sbuffer = SDprintTime(&second, &minute, &hour, &dayOfWeek, &dayOfMonth, &month, &year);
+  char ScharBuff [Sbuffer.length()+1];
+  strcpy(ScharBuff, Sbuffer.c_str()); 
+  
+  uint8_t SuintEightBuff[Sbuffer.length()+1];
+  SuintEightBuff[0] = (uint8_t)atoi(ScharBuff);
+
   Bean.setLed(20,0,0);
-  Bean.setScratchNumber(1, activity);
+  Bean.setScratchData(1, activity, 1);
+  Bean.setScratchData(2, SuintEightBuff, 16);
   //Bean.setLed(0,0,0);
+}
+
+/*=================================================================== 
+ * Function Name: setUpSDcard
+ *  Function Description:
+ *    Prepares the SD card to be written to. Creates/Open HSTART.txt
+ *    file that will hold all log data
+ *  Input Parameters
+ *    lcd object
+ *    HERAend object
+ *  Output Parameters
+ *    lcd object
+ *    HERAend starting files
+ *  Return
+ *    None
+=====================================================================*/
+String SDprintTime(byte *second, byte *minute, byte *hour, byte *dayOfWeek, byte *dayOfMonth, byte *month, byte *year){
+  String Sbuffer = "";
+  if (*hour<10){
+    Sbuffer = Sbuffer + "0";                      // 0   
+  }
+  Sbuffer = Sbuffer + String(*hour, DEC) + ":";   // hh:
+  if (*minute<10){
+    Sbuffer = Sbuffer + "0";                        // hh:0
+  }
+  Sbuffer = Sbuffer + String(*minute, DEC) + ":"; // hh:mm:
+  if (*second<10){
+    Sbuffer = Sbuffer + "0";                      // hh:mm:0
+  }
+  Sbuffer = Sbuffer + String(*second, DEC) + " "; // hh:mm:ss_
+  if (*month < 10){
+    Sbuffer = Sbuffer + "0";                      // hh:mm:ss_0
+  }
+  Sbuffer = Sbuffer + String(*month, DEC) + "/";  // hh:mm:ss_mm/
+  if (*dayOfMonth < 10){
+    Sbuffer = Sbuffer + "0";                      // hh:mm:ss_mm/0
+  }
+  Sbuffer = Sbuffer + String(*dayOfMonth, DEC) + "/" + String(*year, DEC);// hh:mm:ss mm/dd/yyyy
+  return Sbuffer;
 }
