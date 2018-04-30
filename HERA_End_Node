@@ -4,7 +4,9 @@
  *                                      Including More Documentation
  *  Israel Garibay    4/29/18           Fixed SD card issues
  *                                      Removed LCD instances to save SRAM
- * 
+ *  Israel Garibay    4/30/18           SD card was writing after every disconnect, changed
+ *                                      to SD card now writing 5 times per second durring
+ *                                      connection
  * 
  * 
  * 
@@ -33,7 +35,7 @@
 
 /*=============================FUNCTION PROTOTYPES===================================================*/
 
-//void setBeanName(void);
+void setBeanName(void);
 //void setUpLcdCode(void);
 void setUpRTC(void);
 void setUpSDcard(void);
@@ -59,19 +61,10 @@ void setup() {
   setUpRTC();
   setUpSDcard();
   Bean.enableAdvertising(true);
-  for (int index = 0; index < 255; index++){
-    Bean.setLed(0,0,index);
-  }
-  for (int index = 254; index > 0; index--){
-    Bean.setLed(0,0,index);
-  }
 }
 
 void loop() {
   checkConnectionState();
-  //Bean.sleep(1000);
-  // put your main code here, to run repeatedly:
-
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -109,11 +102,11 @@ void loop() {
  *    None
 =====================================================================================================*/
 
-//void setBeanName(void){
-//  Bean.enableConfigSave(true);
-//  String BeanName = "HERA End";
-//  Bean.setBeanName(BeanName);
-//}
+void setBeanName(void){
+  Bean.enableConfigSave(true);
+  String BeanName = "HERA End";
+  Bean.setBeanName(BeanName);
+}
 
 /*=================================================================== 
  * Function Name: setUpLcdCode
@@ -188,7 +181,7 @@ void setUpSDcard(void){
   }
   ////lcd.clear(); ////lcd.home();
   ////lcd.print("SD Good 2 Go!");           // let user know the SD card was successfully initialized
-  delay(1000);                          // wait 1 second
+  //delay(1000);                          // wait 1 second
   HERAend = SD.open("Hend.txt", FILE_WRITE);
   if (!HERAend){
     ////lcd.clear(); ////lcd.home();
@@ -233,25 +226,26 @@ void checkConnectionState(){
     while (Bean.getConnectionState() == true){
       // hold program here until disconnection
       Bean.setLed(20,20,150);
+      upDateFiles();                      // after the disconnection, update the sd card files
       };
     if (Bean.getConnectionState() == false){
       //lcd.clear();
       //lcd.setCursor(0,0);
       //lcd.print("BEAN DETACHED");
       Bean.setLed(10,10,50);
-      Bean.sleep(100);
+      //Bean.sleep(100);
       Bean.setLed(0,0,0);
-      Bean.sleep(100);
+      //Bean.sleep(100);
       Bean.setLed(10,10,50);
-      Bean.sleep(100);
+      //Bean.sleep(100);
       Bean.setLed(0,0,0);
-      upDateFiles();                      // after the disconnection, update the sd card files
+      //upDateFiles();                      // after the disconnection, update the sd card files
       Bean.setLed(10,10,50);
-      Bean.sleep(100);
+      //Bean.sleep(100);
       Bean.setLed(0,0,0);
-      Bean.sleep(100);
+      //Bean.sleep(100);
       Bean.setLed(10,10,50);
-      Bean.sleep(100);
+      //Bean.sleep(100);
       Bean.setLed(0,0,0);
     }
   }
@@ -281,7 +275,7 @@ void checkDismount(){
     //lcd.print("SD Remove Safe!");
     while(1){
       Bean.setLed(50,50,0);
-      Bean.sleep(100);
+      //Bean.sleep(100);
       Bean.setLed(0,0,0);
     }
   }
@@ -370,9 +364,9 @@ void readDS3231time(byte *second, byte *minute, byte *hour, byte *dayOfWeek, byt
 =====================================================================*/
 
 void upDateFiles(){
-  ScratchData   r1 = Bean.readScratchData(1),   // holds START node time
-                r2 = Bean.readScratchData(2),   // holds activity level
-                r3 = Bean.readScratchData(3);   // holds number of hops
+  ScratchData   r1 = Bean.readScratchData(1),   // holds START node time (16 bytes wide)
+                r2 = Bean.readScratchData(2),   // holds activity level (1 byte)
+                r3 = Bean.readScratchData(3);   // holds number of hops (2 bytes)
   byte second,
        minute, 
        hour, 
@@ -404,13 +398,13 @@ void upDateFiles(){
   HERAend.print("| ");
 
   /*Print the Number of Hops onto SD card*/
-  Sbuffer = String(static_cast<char>(r3.data[1])) + String(static_cast<char>(r3.data[0])) + " |";
+  Sbuffer = String(static_cast<char>(r3.data[0])) + String(static_cast<char>(r3.data[1])) + " |";
   HERAend.print(Sbuffer);
   HERAend.println();
   HERAend.flush();
   HERAend.close();
   Bean.setLed(20,0,0);
-  Bean.sleep(100);
+  //Bean.sleep(100);
 }
 
 /*=================================================================== 
