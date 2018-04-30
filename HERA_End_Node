@@ -2,6 +2,8 @@
  *============================================================================================
  *  Israel Garibay    4/27/18           Rewriting all code from Scratch      
  *                                      Including More Documentation
+ *  Israel Garibay    4/29/18           Fixed SD card issues
+ *                                      Removed LCD instances to save SRAM
  * 
  * 
  * 
@@ -57,6 +59,12 @@ void setup() {
   setUpRTC();
   setUpSDcard();
   Bean.enableAdvertising(true);
+  for (int index = 0; index < 255; index++){
+    Bean.setLed(0,0,index);
+  }
+  for (int index = 254; index > 0; index--){
+    Bean.setLed(0,0,index);
+  }
 }
 
 void loop() {
@@ -171,8 +179,12 @@ void setUpSDcard(void){
     ////lcd.print("SD Fail to Init");
     ////lcd.setCursor(0,1);                 // set cursor to write on the left most char of the second row
     ////lcd.print("Check SD Card");         // tell the user to check if SD card is there
-    delay(10);
-    while(1);                           // halt program and have the user restart the microcontroller
+    while(1){
+      Bean.setLed(50,0,0);                           // halt program and have the user restart the microcontroller
+      Bean.sleep(50);
+      Bean.setLed(0,0,0);
+      Bean.sleep(2000);
+    }
   }
   ////lcd.clear(); ////lcd.home();
   ////lcd.print("SD Good 2 Go!");           // let user know the SD card was successfully initialized
@@ -181,11 +193,21 @@ void setUpSDcard(void){
   if (!HERAend){
     ////lcd.clear(); ////lcd.home();
     ////lcd.print("Prob with File");
+    while(1){
+      Bean.setLed(50,0,0);                           // halt program and have the user restart the microcontroller
+      Bean.sleep(50);
+      Bean.setLed(0,0,0);
+      Bean.sleep(50);
+      Bean.setLed(50,0,0);                           // halt program and have the user restart the microcontroller
+      Bean.sleep(50);
+      Bean.setLed(0,0,0);
+      Bean.sleep(2000);
+    }
   }
-  HERAend.print("Raw Hera End Data");
+  HERAend.print(F("Raw Hera End Data"));
   HERAend.println();
-  HERAend.print("|End Time & Date   |Start Time & Date | Activity Level | Hops");
-  //            "1234567891123456789212345678931234567894123456789512345678961"
+  HERAend.print(F("|End Time & Date  |Start Time & Date| AL | HP |"));
+  //              "|hh:mm:ss mm/dd/yy|hh:mm:ss mm/dd/yy| 2  | xx |"
   HERAend.println();
   HERAend.close();                       // close file that was written to
 }
@@ -366,22 +388,23 @@ void upDateFiles(){
   HERAend = SD.open("Hend.txt", FILE_WRITE);        // open data to start storing data
   
   Sbuffer = SDprintTime(&second, &minute, &hour, &dayOfWeek, &dayOfMonth, &month, &year);
-  
+  HERAend.print("|");
   HERAend.print(Sbuffer);                       // prints time as hh:mm:ss mm/dd/yyyy
-  HERAend.print("| ");
+  HERAend.print("|");
 
   /* Print Start Node Time onto SD card, EXAMPLE "16:50:07 4/18/18"*/ 
   for (int index = 0; index < 17; index++){
-    Sbuffer = String(r1.data[index]);
+    Sbuffer = String( static_cast<char>(r1.data[index]));
     HERAend.print(Sbuffer);
   }
+  HERAend.print("|");
   /*Print the activity level on SD card*/
-  Sbuffer = String(r2.data[0], DEC);
+  Sbuffer = " " + String(static_cast<char>(r2.data[0])) + "  ";
   HERAend.print(Sbuffer);      // print the activity level
-  HERAend.print(" | ");
+  HERAend.print("| ");
 
   /*Print the Number of Hops onto SD card*/
-  Sbuffer = String(r3.data[1], DEC) + String(r3.data[0]);
+  Sbuffer = String(static_cast<char>(r3.data[1])) + String(static_cast<char>(r3.data[0])) + " |";
   HERAend.print(Sbuffer);
   HERAend.println();
   HERAend.flush();
@@ -406,19 +429,24 @@ void upDateFiles(){
 =====================================================================*/
 String SDprintTime(byte *second, byte *minute, byte *hour, byte *dayOfWeek, byte *dayOfMonth, byte *month, byte *year){
   String Sbuffer = "";
-  if (*minute<10)
-  {
-    Sbuffer = "0";
+  if (*hour<10){
+    Sbuffer = Sbuffer + "0";                      // 0   
   }
-  Sbuffer = Sbuffer + String(*minute, DEC) + ":";
-  if (*second<10)
-  {
-    Sbuffer = Sbuffer + "0";
+  Sbuffer = Sbuffer + String(*hour, DEC) + ":";   // hh:
+  if (*minute<10){
+    Sbuffer = Sbuffer + "0";                        // hh:0
   }
-  Sbuffer = Sbuffer + String(*second, DEC);
-  Sbuffer = Sbuffer + " " + String(*month, DEC) + "/";// " x | x | hh:mm:ss mm/ " 
+  Sbuffer = Sbuffer + String(*minute, DEC) + ":"; // hh:mm:
+  if (*second<10){
+    Sbuffer = Sbuffer + "0";                      // hh:mm:0
+  }
+  Sbuffer = Sbuffer + String(*second, DEC) + " "; // hh:mm:ss_
+  if (*month < 10){
+    Sbuffer = Sbuffer + "0";                      // hh:mm:ss_0
+  }
+  Sbuffer = Sbuffer + String(*month, DEC) + "/";  // hh:mm:ss_mm/
   if (*dayOfMonth < 10){
-    Sbuffer = Sbuffer + "0";
+    Sbuffer = Sbuffer + "0";                      // hh:mm:ss_mm/0
   }
   Sbuffer = Sbuffer + String(*dayOfMonth, DEC) + "/" + String(*year, DEC);// hh:mm:ss mm/dd/yyyy
   return Sbuffer;
